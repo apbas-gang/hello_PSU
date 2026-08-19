@@ -23,13 +23,25 @@ export function readAssistantContent(data: ProviderResponse): string {
   return "";
 }
 
-function extractTranslation(content: string, dialectToCentral: boolean): string {
+export function extractTranslation(content: string, dialectToCentral: boolean): string {
   const cleaned = stripReasoning(content);
   if (!dialectToCentral) return cleaned;
   try {
-    const parsed = JSON.parse(cleaned) as { standard_thai_translation?: unknown };
-    if (typeof parsed.standard_thai_translation === "string") return parsed.standard_thai_translation.trim();
-  } catch { /* Fall back to plain text when a provider ignores the JSON format. */ }
+    const jsonText = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(jsonText) as { standard_thai_translation?: unknown };
+    if (typeof parsed.standard_thai_translation === "string" && parsed.standard_thai_translation.trim()) {
+      return parsed.standard_thai_translation.trim();
+    }
+  } catch {
+    const match = cleaned.match(/"standard_thai_translation"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+    if (match?.[1]) {
+      try {
+        return JSON.parse(`"${match[1]}"`);
+      } catch {
+        return match[1].trim();
+      }
+    }
+  }
   return cleaned;
 }
 
@@ -49,8 +61,9 @@ function readConfiguredApiKey(): string | undefined {
 export async function translateText(text: string, dialectToCentral: boolean, targetDialect: string = "auto"): Promise<string> {
   // Read configuration at request time because server.ts loads .env during startup.
   const apiKey = readConfiguredApiKey();
-  const apiUrl = process.env.AI_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-  const model = process.env.AI_MODEL ?? "gemini-3.7-flash";
+  const rawUrl = process.env.AI_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  const apiUrl = rawUrl.endsWith("/chat/completions") ? rawUrl : `${rawUrl.replace(/\/+$/, "")}/chat/completions`;
+  const model = process.env.AI_MODEL ?? "gemini-3.6-flash";
   const selectedDialect: DialectSelection = ["north", "isan", "south"].includes(targetDialect) ? targetDialect as DialectSelection : "auto";
   if (!apiKey) throw new AppError("ยังไม่ได้ตั้งค่า AI_API_KEY บนเซิร์ฟเวอร์");
   const from = dialectToCentral ? "ภาษาถิ่น" : "ภาษาไทยกลาง";
@@ -83,7 +96,10 @@ export async function translateText(text: string, dialectToCentral: boolean, tar
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model, max_tokens: 512, temperature: 0.2,
+      model,
+      max_tokens: 2048,
+      temperature: 0.2,
+      ...(dialectToCentral ? { response_format: { type: "json_object" } } : {}),
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `<source_text>\n${text}\n</source_text>` },

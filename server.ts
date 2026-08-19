@@ -64,7 +64,17 @@ async function serveStaticFile(url: string | undefined, response: ServerResponse
 
 const server = createServer(async (request, response) => {
   const pathname = (request.url ?? "/").split("?")[0].replace(/\/+$/, "") || "/";
-  if (request.method === "POST" && pathname === "/api/translate") return handleTranslation(request, response);
+  if (pathname === "/api/translate") {
+    if (request.method === "OPTIONS") {
+      response.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "X-Content-Type-Options": "nosniff" });
+      return response.end(JSON.stringify({ status: "ok" }));
+    }
+    if (request.method === "GET") {
+      return sendJson(response, 200, { status: "ok", message: "Translation API is active. Send a POST request with JSON body to translate." });
+    }
+    if (request.method === "POST") return handleTranslation(request, response);
+    return sendJson(response, 405, { error: "Method not allowed. Use POST /api/translate with JSON body." });
+  }
   if (request.method !== "GET") return sendJson(response, 405, { error: "Method not allowed" });
   return serveStaticFile(request.url, response);
 });

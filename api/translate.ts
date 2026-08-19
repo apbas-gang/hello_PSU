@@ -99,6 +99,7 @@ async function translateText(text: string, dialectToCentral: boolean, targetDial
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   if (request.method === "OPTIONS") return response.status(200).json({ status: "ok" });
+  if (request.method === "GET") return response.status(200).json({ status: "ok", message: "Translation API is active. Send a POST request with JSON body to translate." });
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed. Use POST /api/translate with JSON body." });
   try {
     const body = typeof request.body === "string" ? JSON.parse(request.body) as RequestBody : request.body as RequestBody;

@@ -1,5 +1,17 @@
 {
-  "outputDirectory": ".",
+  "version": 2,
+  "builds": [
+    { "src": "api/translate.ts", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "script.js", "use": "@vercel/static" },
+    { "src": "styles.css", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/translate", "dest": "/api/translate.ts" },
+    { "src": "/script.js", "dest": "/script.js" },
+    { "src": "/styles.css", "dest": "/styles.css" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
   "functions": {
     "api/translate.ts": {
       "maxDuration": 30

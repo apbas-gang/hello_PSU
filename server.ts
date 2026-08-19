@@ -63,7 +63,8 @@ async function serveStaticFile(url: string | undefined, response: ServerResponse
 }
 
 const server = createServer(async (request, response) => {
-  if (request.method === "POST" && request.url === "/api/translate") return handleTranslation(request, response);
+  const pathname = (request.url ?? "/").split("?")[0].replace(/\/+$/, "") || "/";
+  if (request.method === "POST" && pathname === "/api/translate") return handleTranslation(request, response);
   if (request.method !== "GET") return sendJson(response, 405, { error: "Method not allowed" });
   return serveStaticFile(request.url, response);
 });

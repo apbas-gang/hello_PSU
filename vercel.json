@@ -1,5 +1,8 @@
 {
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/translate", "destination": "/api/translate.ts" }
+  ],
   "functions": {
     "api/translate.ts": {
       "maxDuration": 30

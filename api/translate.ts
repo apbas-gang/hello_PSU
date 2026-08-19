@@ -6,7 +6,8 @@ type VercelRequest = IncomingMessage & { body?: unknown };
 type VercelResponse = { status(code: number): VercelResponse; json(body: object): void };
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
-  if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
+  if (request.method === "OPTIONS") return response.status(200).json({ status: "ok" });
+  if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed. Use POST request with JSON body." });
   try {
     const body = typeof request.body === "string" ? JSON.parse(request.body) as RequestBody : request.body as RequestBody;
     if (!body || typeof body.text !== "string" || !body.text.trim()) return response.status(400).json({ error: "กรุณาระบุข้อความที่ต้องการแปล" });

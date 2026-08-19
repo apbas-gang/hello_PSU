@@ -6,7 +6,7 @@ import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppError, translateText } from "./src/translation-service.js";
 
-type TranslationPayload = { text?: unknown; dialectToCentral?: unknown };
+type TranslationPayload = { text?: unknown; dialectToCentral?: unknown; targetDialect?: unknown };
 const port = Number(process.env.PORT ?? 8000);
 const publicDirectory = fileURLToPath(new URL(".", import.meta.url));
 const mimeTypes: Record<string, string> = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8" };
@@ -42,10 +42,10 @@ function readRequestBody(request: IncomingMessage): Promise<string> {
 }
 async function handleTranslation(request: IncomingMessage, response: ServerResponse): Promise<void> {
   try {
-    const { text, dialectToCentral } = JSON.parse(await readRequestBody(request)) as TranslationPayload;
+    const { text, dialectToCentral, targetDialect } = JSON.parse(await readRequestBody(request)) as TranslationPayload;
     if (typeof text !== "string" || !text.trim()) return sendJson(response, 400, { error: "กรุณาระบุข้อความที่ต้องการแปล" });
     if (text.length > 1000) return sendJson(response, 400, { error: "ข้อความต้องไม่เกิน 1,000 ตัวอักษร" });
-    sendJson(response, 200, { translation: await translateText(text.trim(), Boolean(dialectToCentral)) });
+    sendJson(response, 200, { translation: await translateText(text.trim(), Boolean(dialectToCentral), typeof targetDialect === "string" ? targetDialect : "auto") });
   } catch (error) {
     const message = error instanceof Error ? error.message : "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
     const status = error instanceof AppError ? error.statusCode : 500;

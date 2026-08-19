@@ -14,6 +14,7 @@ const speakButton = document.querySelector("#speakButton");
 const sourceLanguage = document.querySelector("#sourceLanguage");
 const targetLanguage = document.querySelector("#targetLanguage");
 const toast = document.querySelector("#toast");
+const dialectSelect = document.querySelector("#dialectSelect");
 let isDialectToCentral = false;
 let toastTimer;
 
@@ -37,7 +38,7 @@ async function translate() {
   if (!text) return showToast("กรุณาพิมพ์ข้อความที่ต้องการแปล");
   setLoading(true); setOutput();
   try {
-    const response = await fetch(TRANSLATION_API_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ text, dialectToCentral:isDialectToCentral }) });
+    const response = await fetch(TRANSLATION_API_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ text, dialectToCentral:isDialectToCentral, targetDialect:dialectSelect.value }) });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `ไม่สามารถเชื่อมต่อบริการแปลภาษาได้ (รหัส ${response.status})`);
     const translated = data.translation?.trim();

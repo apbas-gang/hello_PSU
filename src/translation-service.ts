@@ -5,6 +5,7 @@ type ProviderResponse = {
   choices?: Array<{ message?: { content?: string | ContentPart[] } }>;
   error?: { message?: string };
 };
+type DialectSelection = "auto" | "north" | "isan" | "south";
 
 export class AppError extends Error {
   constructor(message: string, public readonly statusCode = 500) { super(message); }
@@ -45,11 +46,12 @@ function readConfiguredApiKey(): string | undefined {
   return process.env.AI_API_KEY?.trim() || undefined;
 }
 
-export async function translateText(text: string, dialectToCentral: boolean): Promise<string> {
+export async function translateText(text: string, dialectToCentral: boolean, targetDialect: string = "auto"): Promise<string> {
   // Read configuration at request time because server.ts loads .env during startup.
   const apiKey = readConfiguredApiKey();
   const apiUrl = process.env.AI_API_URL ?? "http://thaillm.or.th/api/v1/chat/completions";
   const model = process.env.AI_MODEL ?? "typhoon-s-thaillm-8b-instruct";
+  const selectedDialect: DialectSelection = ["north", "isan", "south"].includes(targetDialect) ? targetDialect as DialectSelection : "auto";
   if (!apiKey) throw new AppError("ยังไม่ได้ตั้งค่า AI_API_KEY บนเซิร์ฟเวอร์");
   const from = dialectToCentral ? "ภาษาถิ่น" : "ภาษาไทยกลาง";
   const to = dialectToCentral ? "ภาษาไทยกลาง" : "ภาษาถิ่น";
@@ -59,6 +61,7 @@ export async function translateText(text: string, dialectToCentral: boolean): Pr
   const systemPrompt = dialectToCentral
     ? [
         "คุณเป็นนักแปลภาษาไทยถิ่นผู้เชี่ยวชาญ แปลข้อความภาษาถิ่นเหนือ/คำเมือง อีสาน ใต้ หรือถิ่นอื่นเป็นภาษาไทยกลางมาตรฐานและภาษาราชการอย่างแม่นยำสูงสุด",
+        `ภูมิภาคที่ผู้ใช้เลือก: ${selectedDialect} (ถ้าเป็น auto ให้ตรวจจับเอง หากข้อความจริงเป็นภูมิภาคอื่นให้แก้ไขการตรวจจับตามหลักฐาน)`,
         "ตัวอย่างอ้างอิง: กิ๋นข้าวแล้วก่อ → กินข้าวแล้วหรือยัง | อู้จาใด → พูดอย่างไร | บ่ฮู้เจ้า → ไม่ทราบครับ/ค่ะ | เจ้าไปไสมา → คุณไปไหนมา | แซบหลาย → อร่อยมาก | บ่เป็นหยัง → ไม่เป็นไร | หวังหนิด → รอสักครู่ | ไปไหนมาแล้วโหวก → ไปไหนมาแล้วหรือ | แรงจัง → หนักจัง",
         "ทำตามลำดับ: 1) ระบุภูมิภาคและหลักฐานอย่างน้อยหนึ่งคำหรือรูปประโยค 2) ระบุศัพท์ถิ่นและความหมาย 3) แปลเป็นภาษาไทยกลางตามความหมายและคงน้ำเสียง 4) ทำเครื่องหมาย [uncertain] เมื่อกำกวม 5) ตรวจทานความหมายและน้ำเสียงก่อนตอบ",
         "คำว่า บ่ อาจพบได้หลายภูมิภาค ให้ใช้บริบทและโครงสร้างประโยค ไม่ตัดสินจากคำเดียว หากไม่มีคำเทียบตรงตัวให้อธิบายใน dialect_specific_terms",
@@ -70,6 +73,7 @@ export async function translateText(text: string, dialectToCentral: boolean): Pr
       ].join("\n")
     : [
         "คุณคือเครื่องมือแปลภาษาไทยกลางเป็นภาษาถิ่น ไม่ใช่แชตบอต",
+        `ภูมิภาคปลายทางที่ผู้ใช้เลือก: ${selectedDialect} (ถ้าเป็น auto ให้เลือกภูมิภาคที่เหมาะกับบริบท)`,
         "ตอบเป็นคำแปลเพียง 1 ข้อความ ห้ามอธิบาย ห้ามวิเคราะห์ ห้ามแสดงขั้นตอนความคิด ห้ามเขียน <think>",
         "รักษาความหมาย น้ำเสียง ความสุภาพ ชื่อเฉพาะ ตัวเลข อีโมจิ และการขึ้นบรรทัดเดิม ถ้าไม่แน่ใจห้ามแต่งข้อมูลเพิ่ม",
         examples,

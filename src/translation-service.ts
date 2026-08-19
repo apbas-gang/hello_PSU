@@ -49,8 +49,8 @@ function readConfiguredApiKey(): string | undefined {
 export async function translateText(text: string, dialectToCentral: boolean, targetDialect: string = "auto"): Promise<string> {
   // Read configuration at request time because server.ts loads .env during startup.
   const apiKey = readConfiguredApiKey();
-  const apiUrl = process.env.AI_API_URL ?? "http://thaillm.or.th/api/v1/chat/completions";
-  const model = process.env.AI_MODEL ?? "typhoon-s-thaillm-8b-instruct";
+  const apiUrl = process.env.AI_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  const model = process.env.AI_MODEL ?? "gemini-3.7-flash";
   const selectedDialect: DialectSelection = ["north", "isan", "south"].includes(targetDialect) ? targetDialect as DialectSelection : "auto";
   if (!apiKey) throw new AppError("ยังไม่ได้ตั้งค่า AI_API_KEY บนเซิร์ฟเวอร์");
   const from = dialectToCentral ? "ภาษาถิ่น" : "ภาษาไทยกลาง";

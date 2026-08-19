@@ -1,0 +1,19 @@
+{
+  "name": "laeng-tai-translator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thai regional dialect translator",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "start": "tsx server.ts",
+    "test": "tsx --test test/translation-service.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": { "node": ">=18" },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

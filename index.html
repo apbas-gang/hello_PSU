@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#047c91" />
+    <title>แปลถิ่น | แปลไทยกลาง ⇄ ภาษาถิ่น</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="hero">
+        <a class="brand" href="#" aria-label="แปลถิ่น หน้าแรก"><span class="brand-mark">〰</span><span>แปลถิ่น</span></a>
+        <div class="hero-content">
+          <p class="eyebrow">THAI DIALECT TRANSLATOR</p>
+          <h1>แปลภาษา ให้ถึงใจ<br /><em>แบบคนพื้นเมือง</em></h1>
+          <p class="hero-copy">เปลี่ยนภาษาไทยกลางและภาษาถิ่นให้คุยกันรู้เรื่อง<br />ด้วยผู้ช่วย AI ที่เข้าใจบริบทและสำเนียง</p>
+        </div>
+        <div class="sun" aria-hidden="true"></div><div class="wave wave-one" aria-hidden="true"></div><div class="wave wave-two" aria-hidden="true"></div>
+      </header>
+
+      <section class="translator-card" aria-label="เครื่องมือแปลภาษา">
+        <div class="direction-bar">
+          <div class="language-label"><span class="flag">ก</span><span id="sourceLanguage">ไทยกลาง</span></div>
+          <button id="swapButton" class="swap-button" type="button" aria-label="สลับทิศทางการแปล" title="สลับทิศทางการแปล"><span aria-hidden="true">⇄</span></button>
+          <div class="language-label language-target"><span class="flag flag-dialect">ถ</span><span id="targetLanguage">ภาษาถิ่น</span></div>
+        </div>
+
+        <div class="translation-grid">
+          <div class="text-panel input-panel">
+            <div class="panel-heading"><label for="sourceText">ข้อความต้นฉบับ</label><span id="charCount">0 / 1,000</span></div>
+            <textarea id="sourceText" maxlength="1000" placeholder="พิมพ์ข้อความที่อยากแปลตรงนี้..." aria-describedby="charCount"></textarea>
+            <button id="clearButton" class="text-action clear-button" type="button">ล้างข้อความ</button>
+          </div>
+          <div class="text-panel output-panel">
+            <div class="panel-heading"><span>คำแปล</span><div class="output-actions"><button id="speakButton" class="speak-button" type="button" disabled><span aria-hidden="true">▶</span> ฟังเสียง</button><button id="copyButton" class="copy-button" type="button" disabled><span aria-hidden="true">▣</span> คัดลอก</button></div></div>
+            <div id="outputText" class="output-text" role="status" aria-live="polite"><span class="output-placeholder">คำแปลของคุณจะแสดงที่นี่</span></div>
+          </div>
+        </div>
+
+        <button id="translateButton" class="translate-button" type="button"><span class="button-label">แปลภาษา</span><span class="spinner" aria-hidden="true"></span><span class="arrow" aria-hidden="true">→</span></button>
+      </section>
+
+      <section class="quick-phrases" aria-labelledby="quickTitle">
+        <div><p class="eyebrow">ลองใช้คำเหล่านี้</p><h2 id="quickTitle">คำฮิตติดปาก</h2></div>
+        <div class="phrase-list">
+          <button class="phrase-button" type="button" data-phrase="หรอยจังหู">หรอยจังหู <span>อร่อยมาก</span></button>
+          <button class="phrase-button" type="button" data-phrase="ทำไรอยู่">ทำไรอยู่ <span>กำลังทำอะไรอยู่</span></button>
+          <button class="phrase-button" type="button" data-phrase="ไปไหนมา">ไปไหนมา <span>ไปที่ไหนมา</span></button>
+          <button class="phrase-button" type="button" data-phrase="คิดถึงจัง">คิดถึงจัง <span>คิดถึงมาก</span></button>
+        </div>
+      </section>
+
+      <footer>ทำด้วยใจ <span aria-hidden="true">♥</span> เพื่อคนรักภาษาถิ่น</footer>
+    </main>
+    <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+    <script src="script.js"></script>
+  </body>
+</html>

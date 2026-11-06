@@ -1,68 +1,36 @@
-// The browser only calls our local backend. The API key stays on the server in an
-// environment variable, so it is never exposed to people using this page.
-const TRANSLATION_API_URL = "/api/translate";
-const MAX_CHARS = 1000;
-
-const sourceText = document.querySelector("#sourceText");
-const outputText = document.querySelector("#outputText");
-const charCount = document.querySelector("#charCount");
-const translateButton = document.querySelector("#translateButton");
-const swapButton = document.querySelector("#swapButton");
-const clearButton = document.querySelector("#clearButton");
-const copyButton = document.querySelector("#copyButton");
-const speakButton = document.querySelector("#speakButton");
-const sourceLanguage = document.querySelector("#sourceLanguage");
-const targetLanguage = document.querySelector("#targetLanguage");
-const toast = document.querySelector("#toast");
-const dialectSelect = document.querySelector("#dialectSelect");
-let isDialectToCentral = false;
-let toastTimer;
-
-function updateCharacterCount() { charCount.textContent = `${sourceText.value.length.toLocaleString("th-TH")} / ${MAX_CHARS.toLocaleString("th-TH")}`; }
-function showToast(message, type = "error") { clearTimeout(toastTimer); toast.textContent = message; toast.className = `toast ${type} show`; toastTimer = setTimeout(() => { toast.className = "toast"; }, 3800); }
-function setOutput(text = "") { outputText.textContent = text; if (!text) outputText.innerHTML = '<span class="output-placeholder">คำแปลของคุณจะแสดงที่นี่</span>'; copyButton.disabled = !text; speakButton.disabled = !text; if (!text) stopSpeaking(); }
-function setLoading(isLoading) { translateButton.disabled = isLoading; translateButton.classList.toggle("is-loading", isLoading); translateButton.querySelector(".button-label").textContent = isLoading ? "กำลังแปล..." : "แปลภาษา"; }
-
-/** Switches the source and destination languages, and preserves text for quick re-translation. */
-function swapDirection() {
-  isDialectToCentral = !isDialectToCentral;
-  sourceLanguage.textContent = isDialectToCentral ? "ภาษาถิ่น" : "ไทยกลาง";
-  targetLanguage.textContent = isDialectToCentral ? "ไทยกลาง" : "ภาษาถิ่น";
-  if (outputText.textContent.trim()) { sourceText.value = outputText.textContent.trim(); setOutput(); updateCharacterCount(); }
-  sourceText.placeholder = isDialectToCentral ? "พิมพ์ภาษาถิ่นที่อยากแปลตรงนี้..." : "พิมพ์ข้อความที่อยากแปลตรงนี้...";
+const API = "/api/translate", MAX_CHARS = 1000, HISTORY_KEY = "lingoura.translation-history.v1", HISTORY_LIMIT = 30;
+const $ = (selector) => document.querySelector(selector);
+const sourceText = $("#sourceText"), outputText = $("#outputText"), charCount = $("#charCount"), translateButton = $("#translateButton"), swapButton = $("#swapButton"), clearButton = $("#clearButton"), copyButton = $("#copyButton"), speakButton = $("#speakButton"), micButton = $("#micButton"), sourceLanguage = $("#sourceLanguage"), targetLanguage = $("#targetLanguage"), toast = $("#toast"), dialectSelect = $("#dialectSelect"), toneSelect = $("#toneSelect"), contextPanel = $("#contextPanel"), contextText = $("#contextText"), historySearch = $("#historySearch"), historyList = $("#historyList"), clearHistoryButton = $("#clearHistoryButton");
+let isDialectToCentral = false, toastTimer, recognition;
+const language = () => dialectSelect.value === "lao" ? "ภาษาลาว" : "ภาษาถิ่น";
+function count() { charCount.textContent = `${sourceText.value.length.toLocaleString("th-TH")} / ${MAX_CHARS.toLocaleString("th-TH")}`; }
+function notify(message, type = "error") { clearTimeout(toastTimer); toast.textContent = message; toast.className = `toast ${type} show`; toastTimer = setTimeout(() => toast.className = "toast", 3800); }
+function output(text = "") { outputText.textContent = text; if (!text) outputText.innerHTML = '<span class="output-placeholder">คำแปลของคุณจะแสดงที่นี่</span>'; copyButton.disabled = speakButton.disabled = !text; if (!text) stopSpeaking(); }
+function context(text = "") { contextText.textContent = text; contextPanel.hidden = !text; }
+function labels() { sourceLanguage.textContent = isDialectToCentral ? language() : "ไทยกลาง"; targetLanguage.textContent = isDialectToCentral ? "ไทยกลาง" : language(); }
+function loading(on) { translateButton.disabled = on; translateButton.classList.toggle("is-loading", on); translateButton.querySelector(".button-label").textContent = on ? "กำลังแปล..." : "แปลภาษา"; }
+function history() { try { const entries = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); return Array.isArray(entries) ? entries : []; } catch { return []; } }
+function drawHistory() {
+  const query = historySearch.value.trim().toLowerCase(), entries = history().filter((entry) => `${entry.source} ${entry.translation}`.toLowerCase().includes(query));
+  clearHistoryButton.hidden = history().length === 0;
+  if (!entries.length) { historyList.innerHTML = `<p class="history-empty">${query ? "ไม่พบข้อความที่ค้นหา" : "ยังไม่มีประวัติการแปลในอุปกรณ์นี้"}</p>`; return; }
+  historyList.innerHTML = "";
+  entries.forEach((entry) => { const button = document.createElement("button"), source = document.createElement("strong"), translated = document.createElement("span"), meta = document.createElement("small"); button.type = "button"; button.className = "history-item"; source.textContent = entry.source; translated.textContent = entry.translation; meta.textContent = `${entry.from} → ${entry.to} · ${new Date(entry.createdAt).toLocaleString("th-TH")}`; button.append(source, translated, meta); button.addEventListener("click", () => { sourceText.value = entry.source; output(entry.translation); context(entry.explanation || ""); count(); sourceText.focus(); }); historyList.append(button); });
 }
-
-/** Sends text to the local backend, which securely calls the configured AI provider. */
+function addHistory(source, translation, explanation) { const entry = { source, translation, explanation, from: isDialectToCentral ? language() : "ไทยกลาง", to: isDialectToCentral ? "ไทยกลาง" : language(), createdAt: Date.now() }; const entries = history().filter((item) => !(item.source === source && item.translation === translation)); entries.unshift(entry); localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, HISTORY_LIMIT))); drawHistory(); }
 async function translate() {
-  const text = sourceText.value.trim();
-  if (!text) return showToast("กรุณาพิมพ์ข้อความที่ต้องการแปล");
-  setLoading(true); setOutput();
-  try {
-    const response = await fetch(TRANSLATION_API_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ text, dialectToCentral:isDialectToCentral, targetDialect:dialectSelect.value }) });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `ไม่สามารถเชื่อมต่อบริการแปลภาษาได้ (รหัส ${response.status})`);
-    const translated = data.translation?.trim();
-    if (!translated) throw new Error("API ไม่ส่งคำแปลกลับมา กรุณาลองใหม่อีกครั้ง");
-    setOutput(translated); showToast("แปลภาษาเรียบร้อยแล้ว", "success");
-  } catch (error) { setOutput(); showToast(error instanceof TypeError ? "เชื่อมต่ออินเทอร์เน็ตไม่ได้ กรุณาตรวจสอบแล้วลองใหม่" : error.message); }
-  finally { setLoading(false); }
+  const text = sourceText.value.trim(); if (!text) return notify("กรุณาพิมพ์ข้อความที่ต้องการแปล"); loading(true); output(); context();
+  try { const response = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, dialectToCentral: isDialectToCentral, targetDialect: dialectSelect.value, tone: toneSelect.value }) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || `ไม่สามารถเชื่อมต่อบริการแปลภาษาได้ (รหัส ${response.status})`); const translated = data.translation?.trim(); if (!translated) throw new Error("API ไม่ส่งคำแปลกลับมา กรุณาลองใหม่อีกครั้ง"); const explanation = data.explanation?.trim() || ""; output(translated); context(explanation); addHistory(text, translated, explanation); notify("แปลภาษาเรียบร้อยแล้ว", "success"); } catch (error) { output(); notify(error instanceof TypeError ? "เชื่อมต่ออินเทอร์เน็ตไม่ได้ กรุณาตรวจสอบแล้วลองใหม่" : error.message); } finally { loading(false); }
 }
-
-sourceText.addEventListener("input", updateCharacterCount);
-translateButton.addEventListener("click", translate);
-swapButton.addEventListener("click", swapDirection);
-clearButton.addEventListener("click", () => { sourceText.value = ""; updateCharacterCount(); sourceText.focus(); });
-copyButton.addEventListener("click", async () => { try { await navigator.clipboard.writeText(outputText.textContent.trim()); showToast("คัดลอกคำแปลแล้ว", "success"); } catch { showToast("ไม่สามารถคัดลอกได้ กรุณาคัดลอกด้วยตนเอง"); } });
-speakButton.addEventListener("click", () => {
-  if (!("speechSynthesis" in window)) return showToast("เบราว์เซอร์นี้ไม่รองรับการอ่านออกเสียง");
-  if (speechSynthesis.speaking) return stopSpeaking();
-  const utterance = new SpeechSynthesisUtterance(outputText.textContent.trim());
-  utterance.lang = "th-TH"; utterance.rate = 0.9; utterance.pitch = 1;
-  utterance.onstart = () => { speakButton.classList.add("is-speaking"); speakButton.innerHTML = '<span aria-hidden="true">■</span> หยุดเสียง'; };
-  utterance.onend = utterance.onerror = () => { speakButton.classList.remove("is-speaking"); speakButton.innerHTML = '<span aria-hidden="true">▶</span> ฟังเสียง'; };
-  speechSynthesis.speak(utterance);
-});
+function setupMic() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { micButton.disabled = true; micButton.title = "เบราว์เซอร์นี้ไม่รองรับการพิมพ์ด้วยเสียง"; return; }
+  recognition = new SpeechRecognition(); recognition.lang = "th-TH"; recognition.interimResults = true; recognition.continuous = false; let prefix = "";
+  recognition.onstart = () => { prefix = sourceText.value.trim(); micButton.classList.add("listening"); micButton.innerHTML = '<span aria-hidden="true">■</span> กำลังฟัง...'; };
+  recognition.onresult = (event) => { const words = Array.from(event.results).map((result) => result[0].transcript).join(""); sourceText.value = [prefix, words].filter(Boolean).join(prefix ? " " : ""); count(); };
+  recognition.onend = () => { micButton.classList.remove("listening"); micButton.innerHTML = '<span aria-hidden="true">🎤</span> พูดแทน'; };
+  recognition.onerror = (event) => { if (event.error !== "aborted") notify(event.error === "not-allowed" ? "กรุณาอนุญาตให้ใช้ไมโครโฟน" : "ไม่สามารถรับเสียงได้ กรุณาลองใหม่"); };
+  micButton.addEventListener("click", () => micButton.classList.contains("listening") ? recognition.stop() : recognition.start());
+}
 function stopSpeaking() { if ("speechSynthesis" in window) speechSynthesis.cancel(); speakButton.classList.remove("is-speaking"); speakButton.innerHTML = '<span aria-hidden="true">▶</span> ฟังเสียง'; }
-document.querySelectorAll(".phrase-button").forEach((button) => button.addEventListener("click", () => { sourceText.value = button.dataset.phrase; updateCharacterCount(); sourceText.focus(); }));
-sourceText.addEventListener("keydown", (event) => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter") translate(); });
-updateCharacterCount();
+sourceText.addEventListener("input", count); translateButton.addEventListener("click", translate); swapButton.addEventListener("click", () => { isDialectToCentral = !isDialectToCentral; labels(); if (outputText.textContent.trim()) { sourceText.value = outputText.textContent.trim(); output(); context(); count(); } }); dialectSelect.addEventListener("change", labels); clearButton.addEventListener("click", () => { sourceText.value = ""; count(); sourceText.focus(); }); historySearch.addEventListener("input", drawHistory); clearHistoryButton.addEventListener("click", () => { localStorage.removeItem(HISTORY_KEY); drawHistory(); notify("ล้างประวัติแล้ว", "success"); }); copyButton.addEventListener("click", async () => { try { await navigator.clipboard.writeText(outputText.textContent.trim()); notify("คัดลอกคำแปลแล้ว", "success"); } catch { notify("ไม่สามารถคัดลอกได้ กรุณาคัดลอกด้วยตนเอง"); } }); speakButton.addEventListener("click", () => { if (!("speechSynthesis" in window)) return notify("เบราว์เซอร์นี้ไม่รองรับการอ่านออกเสียง"); if (speechSynthesis.speaking) return stopSpeaking(); const utterance = new SpeechSynthesisUtterance(outputText.textContent.trim()); utterance.lang = dialectSelect.value === "lao" ? "lo-LA" : "th-TH"; utterance.rate = .9; utterance.onstart = () => { speakButton.classList.add("is-speaking"); speakButton.innerHTML = '<span aria-hidden="true">■</span> หยุดเสียง'; }; utterance.onend = utterance.onerror = stopSpeaking; speechSynthesis.speak(utterance); }); document.querySelectorAll(".phrase-button").forEach((button) => button.addEventListener("click", () => { sourceText.value = button.dataset.phrase; count(); sourceText.focus(); })); sourceText.addEventListener("keydown", (event) => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter") translate(); }); count(); labels(); setupMic(); drawHistory();

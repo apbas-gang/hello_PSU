@@ -13,9 +13,9 @@
   <body>
     <main class="page-shell">
       <header class="hero">
-        <a class="brand" href="#" aria-label="แปลถิ่น หน้าแรก"><span class="brand-mark">〰</span><span>แปลถิ่น</span></a>
+        <a class="brand" href="#" aria-label="แหลงถิ่น หน้าแรก"><span class="brand-mark">〰</span><span>แหลงถิ่น</span></a>
         <div class="hero-content">
-          <p class="eyebrow">THAI DIALECT TRANSLATOR</p>
+          <p class="eyebrow">THAI SOUTHERN TRANSLATOR</p>
           <h1>แปลภาษา ให้ถึงใจ<br /><em>แบบคนพื้นเมือง</em></h1>
           <p class="hero-copy">เปลี่ยนภาษาไทยกลางและภาษาถิ่นให้คุยกันรู้เรื่อง<br />ด้วยผู้ช่วย AI ที่เข้าใจบริบทและสำเนียง</p>
         </div>
@@ -26,15 +26,39 @@
         <div class="direction-bar">
           <div class="language-label"><span class="flag">ก</span><span id="sourceLanguage">ไทยกลาง</span></div>
           <button id="swapButton" class="swap-button" type="button" aria-label="สลับทิศทางการแปล" title="สลับทิศทางการแปล"><span aria-hidden="true">⇄</span></button>
-          <div class="language-label language-target"><span class="flag flag-dialect">ถ</span><span id="targetLanguage">ภาษาถิ่น</span></div>
+          <div class="language-label language-target"><span class="flag flag-south">ใ</span><span id="targetLanguage">ภาษาถิ่น</span></div>
         </div>
-        <label class="dialect-picker" for="dialectSelect"><span>ภูมิภาคภาษา</span><select id="dialectSelect"><option value="auto">อัตโนมัติ (ตรวจจับให้)</option><option value="north">เหนือ / คำเมือง</option><option value="isan">อีสาน</option><option value="south">ใต้</option></select></label>
+
+        <div class="dialect-picker">
+          <label for="dialectSelect">ภูมิภาคภาษา:</label>
+          <select id="dialectSelect">
+            <option value="auto" selected>อัตโนมัติ (ตรวจจับให้)</option>
+            <option value="north">เหนือ / คำเมือง</option>
+            <option value="isan">อีสาน</option>
+            <option value="south">ใต้</option>
+            <option value="lao">ภาษาลาว</option>
+          </select>
+        </div>
+
+        <div class="tone-picker">
+          <label for="toneSelect">ระดับภาษา <span>ไม่บังคับ</span>:</label>
+          <select id="toneSelect">
+            <option value="natural" selected>เป็นธรรมชาติ</option>
+            <option value="polite">สุภาพ</option>
+            <option value="friendly">เป็นกันเอง</option>
+            <option value="youth">ภาษาวัยรุ่น</option>
+            <option value="formal">ทางการ</option>
+          </select>
+        </div>
 
         <div class="translation-grid">
           <div class="text-panel input-panel">
             <div class="panel-heading"><label for="sourceText">ข้อความต้นฉบับ</label><span id="charCount">0 / 1,000</span></div>
             <textarea id="sourceText" maxlength="1000" placeholder="พิมพ์ข้อความที่อยากแปลตรงนี้..." aria-describedby="charCount"></textarea>
-            <button id="clearButton" class="text-action clear-button" type="button">ล้างข้อความ</button>
+            <div class="input-actions">
+              <button id="micButton" class="mic-button" type="button" title="กดค้างเพื่อพูด"><span aria-hidden="true">🎤</span> พูดแทน</button>
+              <button id="clearButton" class="text-action clear-button" type="button">ล้างข้อความ</button>
+            </div>
           </div>
           <div class="text-panel output-panel">
             <div class="panel-heading"><span>คำแปล</span><div class="output-actions"><button id="speakButton" class="speak-button" type="button" disabled><span aria-hidden="true">▶</span> ฟังเสียง</button><button id="copyButton" class="copy-button" type="button" disabled><span aria-hidden="true">▣</span> คัดลอก</button></div></div>
@@ -43,6 +67,20 @@
         </div>
 
         <button id="translateButton" class="translate-button" type="button"><span class="button-label">แปลภาษา</span><span class="spinner" aria-hidden="true"></span><span class="arrow" aria-hidden="true">→</span></button>
+
+        <section id="contextPanel" class="context-panel" hidden aria-labelledby="contextTitle">
+          <div class="context-heading"><span aria-hidden="true">✦</span><h2 id="contextTitle">AI Context Explanation</h2></div>
+          <p id="contextText"></p>
+        </section>
+      </section>
+
+      <section class="history-section" aria-labelledby="historyTitle">
+        <div class="history-header">
+          <div><p class="eyebrow">TRANSLATION HISTORY</p><h2 id="historyTitle">ประวัติการแปล</h2></div>
+          <button id="clearHistoryButton" class="clear-history-button" type="button" hidden>ล้างประวัติ</button>
+        </div>
+        <label class="history-search"><span class="sr-only">ค้นหาประวัติการแปล</span><input id="historySearch" type="search" placeholder="ค้นหาข้อความหรือคำแปลเก่า..." /></label>
+        <div id="historyList" class="history-list" aria-live="polite"><p class="history-empty">ยังไม่มีประวัติการแปลในอุปกรณ์นี้</p></div>
       </section>
 
       <section class="quick-phrases" aria-labelledby="quickTitle">

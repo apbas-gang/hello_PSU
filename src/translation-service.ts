@@ -97,7 +97,7 @@ export async function translateWithContext(text: string, dialectToCentral: boole
   const apiKey = readConfiguredApiKey();
   const rawUrl = process.env.AI_API_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
   const apiUrl = rawUrl.endsWith("/chat/completions") ? rawUrl : `${rawUrl.replace(/\/+$/, "")}/chat/completions`;
-  const model = process.env.AI_MODEL ?? "gemini-3.6-flash";
+  const model = process.env.AI_MODEL ?? "gemini-3.5-flash-lite";
   const selectedDialect: DialectSelection = ["north", "isan", "south", "lao"].includes(targetDialect) ? targetDialect as DialectSelection : "auto";
   if (!apiKey) throw new AppError("ยังไม่ได้ตั้งค่า AI_API_KEY บนเซิร์ฟเวอร์");
   const dialectName = selectedDialect === "lao" ? "ภาษาลาว" : selectedDialect === "auto" ? "ภาษาถิ่นที่ตรวจจับได้" : `ภาษาถิ่น${selectedDialect}`;

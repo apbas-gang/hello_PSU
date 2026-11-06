@@ -18,7 +18,7 @@ npm run dev
 ```env
 AI_API_KEY=YOUR_GEMINI_API_KEY
 AI_API_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
-AI_MODEL=gemini-3.6-flash
+AI_MODEL=gemini-3.5-flash-lite
 PORT=8000
 ```
 
@@ -29,5 +29,5 @@ PORT=8000
 3. ใน **Project Settings -> Environment Variables**, เพิ่มค่าดังนี้:
    - `AI_API_KEY` = `YOUR_GEMINI_API_KEY`
    - `AI_API_URL` = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
-   - `AI_MODEL` = `gemini-3.6-flash`
+   - `AI_MODEL` = `gemini-3.5-flash-lite`
 4. กด **Deploy**

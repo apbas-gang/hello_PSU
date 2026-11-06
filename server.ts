@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AppError, translateWithContext } from "./src/translation-service.js";
+import { synthesizeSpeech } from "./src/speech-service.js";
 
 type TranslationPayload = { text?: unknown; dialectToCentral?: unknown; targetDialect?: unknown; tone?: unknown };
 const port = Number(process.env.PORT ?? 8000);
@@ -52,6 +53,17 @@ async function handleTranslation(request: IncomingMessage, response: ServerRespo
     sendJson(response, status, { error: message === "fetch failed" ? "เชื่อมต่อ AI API ไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตและ URL" : message });
   }
 }
+async function handleSpeech(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  try {
+    const { text } = JSON.parse(await readRequestBody(request)) as TranslationPayload;
+    if (typeof text !== "string" || !text.trim()) return sendJson(response, 400, { error: "กรุณาระบุข้อความที่ต้องการฟัง" });
+    if (text.length > 1000) return sendJson(response, 400, { error: "ข้อความต้องไม่เกิน 1,000 ตัวอักษร" });
+    sendJson(response, 200, await synthesizeSpeech(text.trim()));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+    sendJson(response, error instanceof AppError ? error.statusCode : 500, { error: message });
+  }
+}
 async function serveStaticFile(url: string | undefined, response: ServerResponse): Promise<void> {
   const requestPath = url === "/" ? "/index.html" : (url ?? "/index.html").split("?")[0];
   const filePath = resolve(publicDirectory, `.${requestPath}`);
@@ -64,7 +76,7 @@ async function serveStaticFile(url: string | undefined, response: ServerResponse
 
 const server = createServer(async (request, response) => {
   const pathname = (request.url ?? "/").split("?")[0].replace(/\/+$/, "") || "/";
-  if (pathname === "/api/translate") {
+  if (pathname === "/api/translate" || pathname === "/api/speech") {
     if (request.method === "OPTIONS") {
       response.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "X-Content-Type-Options": "nosniff" });
       return response.end(JSON.stringify({ status: "ok" }));
@@ -72,7 +84,7 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET") {
       return sendJson(response, 200, { status: "ok", message: "Translation API is active. Send a POST request with JSON body to translate." });
     }
-    if (request.method === "POST") return handleTranslation(request, response);
+    if (request.method === "POST") return pathname === "/api/speech" ? handleSpeech(request, response) : handleTranslation(request, response);
     return sendJson(response, 405, { error: "Method not allowed. Use POST /api/translate with JSON body." });
   }
   if (request.method !== "GET") return sendJson(response, 405, { error: "Method not allowed" });

@@ -19,6 +19,7 @@ npm run dev
 AI_API_KEY=YOUR_GEMINI_API_KEY
 AI_API_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
 AI_MODEL=gemini-3.5-flash-lite
+AI_TTS_MODEL=gemini-3.8-flash-tts
 PORT=8000
 ```
 

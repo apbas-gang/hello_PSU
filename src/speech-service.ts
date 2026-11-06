@@ -4,6 +4,14 @@ import { AppError } from "./translation-service.js";
 type AudioContent = { type?: string; data?: string; mime_type?: string };
 type TtsResponse = { output_audio?: AudioContent; steps?: Array<{ content?: AudioContent[] }>; error?: { message?: string } };
 
+function findAudio(value: unknown): AudioContent | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const item = value as Record<string, unknown>;
+  if (typeof item.data === "string" && (item.type === "audio" || typeof item.mime_type === "string" || typeof item.mimeType === "string")) return { data: item.data, mime_type: typeof item.mime_type === "string" ? item.mime_type : typeof item.mimeType === "string" ? item.mimeType : undefined };
+  for (const child of Object.values(item)) { const found = Array.isArray(child) ? child.map(findAudio).find(Boolean) : findAudio(child); if (found) return found; }
+  return undefined;
+}
+
 function readApiKey(): string | undefined {
   const keyFile = process.env.AI_API_KEY_FILE?.trim();
   if (keyFile) {
@@ -28,7 +36,7 @@ export async function synthesizeSpeech(text: string): Promise<{ audio: string; m
   });
   const data = await response.json().catch(() => ({})) as TtsResponse;
   if (!response.ok) throw new AppError(data.error?.message ?? "ไม่สามารถสร้างเสียงได้ในขณะนี้", response.status >= 500 || response.status === 429 ? 503 : response.status);
-  const audioContent = data.output_audio?.data ? data.output_audio : data.steps?.flatMap((step) => step.content ?? []).find((content) => content.type === "audio" && content.data);
+  const audioContent = findAudio(data);
   const audio = audioContent?.data;
   if (!audio) throw new AppError("บริการเสียงไม่ได้ส่งไฟล์เสียงกลับมา", 502);
   return { audio, mimeType: audioContent?.mime_type ?? "audio/wav" };

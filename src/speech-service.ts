@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { AppError } from "./translation-service.js";
 
-type TtsResponse = { output_audio?: { data?: string; mime_type?: string }; error?: { message?: string } };
+type AudioContent = { type?: string; data?: string; mime_type?: string };
+type TtsResponse = { output_audio?: AudioContent; steps?: Array<{ content?: AudioContent[] }>; error?: { message?: string } };
 
 function readApiKey(): string | undefined {
   const keyFile = process.env.AI_API_KEY_FILE?.trim();
@@ -27,7 +28,8 @@ export async function synthesizeSpeech(text: string): Promise<{ audio: string; m
   });
   const data = await response.json().catch(() => ({})) as TtsResponse;
   if (!response.ok) throw new AppError(data.error?.message ?? "ไม่สามารถสร้างเสียงได้ในขณะนี้", response.status >= 500 || response.status === 429 ? 503 : response.status);
-  const audio = data.output_audio?.data;
+  const audioContent = data.output_audio?.data ? data.output_audio : data.steps?.flatMap((step) => step.content ?? []).find((content) => content.type === "audio" && content.data);
+  const audio = audioContent?.data;
   if (!audio) throw new AppError("บริการเสียงไม่ได้ส่งไฟล์เสียงกลับมา", 502);
-  return { audio, mimeType: data.output_audio?.mime_type ?? "audio/wav" };
+  return { audio, mimeType: audioContent?.mime_type ?? "audio/wav" };
 }

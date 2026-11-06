@@ -1,6 +1,7 @@
 type VercelRequest = { method?: string; body?: unknown };
 type VercelResponse = { status(code: number): VercelResponse; json(body: object): void };
-type TtsResponse = { output_audio?: { data?: string; mime_type?: string }; error?: { message?: string } };
+type AudioContent = { type?: string; data?: string; mime_type?: string };
+type TtsResponse = { output_audio?: AudioContent; steps?: Array<{ content?: AudioContent[] }>; error?: { message?: string } };
 
 export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
   if (request.method === "OPTIONS") return response.status(200).json({ status: "ok" });
@@ -17,7 +18,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
     });
     const data = await result.json().catch(() => ({})) as TtsResponse;
     if (!result.ok) return response.status(result.status >= 500 || result.status === 429 ? 503 : result.status).json({ error: data.error?.message ?? "ไม่สามารถสร้างเสียงได้ในขณะนี้" });
-    if (!data.output_audio?.data) return response.status(502).json({ error: "บริการเสียงไม่ได้ส่งไฟล์เสียงกลับมา" });
-    return response.status(200).json({ audio: data.output_audio.data, mimeType: data.output_audio.mime_type ?? "audio/wav" });
+    const audioContent = data.output_audio?.data ? data.output_audio : data.steps?.flatMap((step) => step.content ?? []).find((content) => content.type === "audio" && content.data);
+    if (!audioContent?.data) return response.status(502).json({ error: "บริการเสียงไม่ได้ส่งไฟล์เสียงกลับมา" });
+    return response.status(200).json({ audio: audioContent.data, mimeType: audioContent.mime_type ?? "audio/wav" });
   } catch (error) { return response.status(500).json({ error: error instanceof Error ? error.message : "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ" }); }
 }

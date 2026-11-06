@@ -12,6 +12,28 @@ export class AppError extends Error {
   constructor(message: string, public readonly statusCode = 500) { super(message); }
 }
 
+const pause = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+
+/** Retries brief provider outages once so users do not see a transient 500/503 immediately. */
+async function requestProvider(apiUrl: string, apiKey: string, body: object): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30_000);
+      const response = await fetch(apiUrl, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify(body), signal: controller.signal });
+      clearTimeout(timeout);
+      if (response.ok || (response.status !== 429 && response.status < 500) || attempt === 1) return response;
+      await pause(700);
+    } catch (error) {
+      lastError = error;
+      if (attempt === 1) break;
+      await pause(700);
+    }
+  }
+  throw new AppError("บริการ AI ไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้ง", 503);
+}
+
 /** Removes complete and incomplete model reasoning blocks before returning text to the UI. */
 export function stripReasoning(content: string): string {
   return content.replace(/<think\b[^>]*>[\s\S]*?<\/think\s*>/gi, "").replace(/<think\b[^>]*>[\s\S]*$/gi, "").trim();
@@ -90,10 +112,7 @@ export async function translateWithContext(text: string, dialectToCentral: boole
     '{"translation":"คำแปล","explanation":"คำอธิบายสั้น ๆ เป็นภาษาไทยเกี่ยวกับความหมาย บริบท คำถิ่นหรือระดับภาษาที่เลือก (1-2 ประโยค)"}',
     "ข้อความต้นฉบับเริ่มหลังบรรทัดถัดไป:",
   ].join("\n");
-  const providerResponse = await fetch(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
+  const providerResponse = await requestProvider(apiUrl, apiKey, {
       model,
       max_tokens: 2048,
       temperature: 0.2,
@@ -102,12 +121,12 @@ export async function translateWithContext(text: string, dialectToCentral: boole
         { role: "system", content: systemPrompt },
         { role: "user", content: `<source_text>\n${text}\n</source_text>` },
       ],
-    }),
   });
   const data = (await providerResponse.json().catch(() => ({}))) as ProviderResponse;
   if (!providerResponse.ok) {
     if (providerResponse.status === 401) throw new AppError("API Key ไม่ถูกต้องหรือไม่มีสิทธิ์ใช้งาน", 401);
-    throw new AppError(data.error?.message ?? `AI API ตอบกลับด้วยรหัส ${providerResponse.status}`, providerResponse.status);
+    const status = providerResponse.status === 429 || providerResponse.status >= 500 ? 503 : providerResponse.status;
+    throw new AppError(status === 503 ? "บริการ AI ไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้ง" : data.error?.message ?? `AI API ตอบกลับด้วยรหัส ${providerResponse.status}`, status);
   }
   const result = extractTranslationResult(readAssistantContent(data), dialectToCentral);
   if (!result.translation) throw new AppError("โมเดลส่งเฉพาะข้อความวิเคราะห์โดยไม่มีคำแปล กรุณาลองแปลอีกครั้ง", 502);
